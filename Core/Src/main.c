@@ -46,13 +46,45 @@
 /* USER CODE BEGIN PV */
 //uint8_t rec_buffer[7];
 uint8_t flag = 0;
+extern uint8_t* Buf;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 /* USER CODE BEGIN PFP */
-void JumpToBootloader(void);
+void JumpToBootloader(void)
+{
+  uint32_t i=0;
+  void (*SysMemBootJump)(void);
+  /* Set the address of the entry point to bootloader */
+     volatile uint32_t BootAddr = 0x1FF09800;
+  /* Disable all interrupts */
+     __disable_irq();
+  /* Disable Systick timer */
+     SysTick->CTRL = 0;
+  /* Set the clock to the default state */
+     HAL_RCC_DeInit();
+  /* Clear Interrupt Enable Register & Interrupt Pending Register */
+     for (i=0;i<5;i++)
+     {
+	  NVIC->ICER[i]=0xFFFFFFFF;
+	  NVIC->ICPR[i]=0xFFFFFFFF;
+     }
+  /* Re-enable all interrupts */
+     __enable_irq();
+  /* Set up the1ff09800 jump to booloader address + 4 */
+     SysMemBootJump = (void (*)(void)) (*((uint32_t *) ((BootAddr + 4))));
+  /* Set the main stack pointer to the bootloader stack */
+     __set_MSP(*(uint32_t *)BootAddr);
+  /* Call the function to jump to bootloader location */
+     SysMemBootJump();
+  /* Jump is done successfully */
+     while (1)
+     {
+      /* Code should never reach this loop */
+     }
+}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -99,13 +131,14 @@ int main(void)
   {
 	  char mystr[] = "hello\n\r";
 	  CDC_Transmit_FS((uint8_t*)mystr,sizeof(mystr));
-	  if(flag == 1)
-	  {
-		  HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_7);
-		  HAL_Delay(1000);
-		  JumpToBootloader();
-		  flag = 0;
-	  }
+
+//	  if(flag == 1)
+//	  {
+//		  HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_7);
+//		  HAL_Delay(1000);
+//		  JumpToBootloader();
+//		  flag = 0;
+//	  }
 //	  HAL_Delay(1000);
     /* USER CODE END WHILE */
 
@@ -206,38 +239,7 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void JumpToBootloader(void)
-{
-  uint32_t i=0;
-  void (*SysMemBootJump)(void);
-  /* Set the address of the entry point to bootloader */
-     volatile uint32_t BootAddr = 0x1FF09800;
-  /* Disable all interrupts */
-     __disable_irq();
-  /* Disable Systick timer */
-     SysTick->CTRL = 0;
-  /* Set the clock to the default state */
-     HAL_RCC_DeInit();
-  /* Clear Interrupt Enable Register & Interrupt Pending Register */
-     for (i=0;i<5;i++)
-     {
-  NVIC->ICER[i]=0xFFFFFFFF;
-  NVIC->ICPR[i]=0xFFFFFFFF;
-     }
-  /* Re-enable all interrupts */
-     __enable_irq();
-  /* Set up the1ff09800 jump to booloader address + 4 */
-     SysMemBootJump = (void (*)(void)) (*((uint32_t *) ((BootAddr + 4))));
-  /* Set the main stack pointer to the bootloader stack */
-     __set_MSP(*(uint32_t *)BootAddr);
-  /* Call the function to jump to bootloader location */
-     SysMemBootJump();
-  /* Jump is done successfully */
-     while (1)
-     {
-      /* Code should never reach this loop */
-     }
-}
+
 /* USER CODE END 4 */
 
 /**
